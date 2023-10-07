@@ -1,0 +1,6 @@
+tests
+_build
+
+*.exe
+
+instructions.*
