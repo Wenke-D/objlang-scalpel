@@ -6,14 +6,14 @@ let () =
   let file = Sys.argv.(1) in
   let c = open_in file in
   let lb = Lexing.from_channel c in
-  let prog = Asimpparser.program Asimplexer.token lb in
+  let prog = Objlngparser.program Objlnglexer.token lb in
   close_in c;
 
   (* typing *)
   let tprog =
-    try Asimptyper.type_program prog
-    with Asimptyper.UnexpectedTypeError (expected, acutal) ->
-      Asimptyper.print_unexpected_type_error expected acutal;
+    try Objtyper.type_program prog
+    with TypeError.UnexpectedTypeError data ->
+      print_endline (TypeError.format_type_error data);
       exit 1
   in
 

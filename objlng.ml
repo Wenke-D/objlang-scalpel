@@ -12,6 +12,14 @@ type typ =
 (* not an actual type in the source language, but having it in
    the AST makes the code more uniform *)
 
+let rec string_of_typ t =
+  match t with
+  | TInt -> "int"
+  | TBool -> "bool"
+  | TClass name -> "class: " ^ name
+  | TArray typ -> "[" ^ string_of_typ typ ^ "]"
+  | TVoid -> "void"
+
 type binop = Add | Mul | Lt
 
 type 'a expression = { annot : 'a; expr : 'a expr }

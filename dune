@@ -1,11 +1,17 @@
 (ocamllex
- (modules asimplexer))
+ (modules objlnglexer))
+
 (menhir
- (modules asimpparser)
+ (modules objlngparser)
  (flags --explain --dump)
  (infer true))
+
 (executable
  (name asimpc)
  (promote (until-clean))
  (flags ()))
-(env (dev (flags (:standard -w -50))))
+
+(env
+ (dev
+  (flags
+   (:standard -w -50))))

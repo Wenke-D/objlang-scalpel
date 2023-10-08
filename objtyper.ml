@@ -1,48 +1,46 @@
 open Objlng
+open TypeError
 open Debug
 
 module Env = Map.Make (String)
 (** types for various environments *)
 
 type tenv = typ Env.t
-(** map<String, Simp.type> *)
+(** map<String, Objlng.type> *)
 
 type fenv = unit function_def Env.t
 (** map<String, function_def<unit>> *)
 
-type senv = struct_def Env.t
-(** map<String, struct_def> *)
+type senv = unit class_def Env.t
+(** map<String, class_def<unit>> *)
 
-exception UnexpectedTypeError of typ * typ
-(** (expected_type, actual_type)  *)
+(* expression *)
+type untyped_expr = unit expression
+type typed_expr = typ expression
 
-exception ArgumentLengthNotMatchError of int * int
-(** (expected_length, actual_length)  *)
+(* function *)
+type untyped_func = unit function_def
+type typed_func = typ function_def
 
-exception NotIndexableError of typ
-exception NotStructureError of typ
-exception UnknownFieldError of { structure : string; field : string }
+(* class *)
+type untyped_class = unit class_def
+type typed_class = typ class_def
 
-let unexpected_type expect actual = raise (UnexpectedTypeError (expect, actual))
+(* program *)
+type untyped_prog = unit program
+type typed_prog = typ program
 
-let print_unexpected_type_error expect actual =
-  print_endline
-    (Format.sprintf "expecting [%s], got [%s]" (string_of_typ expect)
-       (string_of_typ actual))
-
-let not_match expected actual =
-  raise (ArgumentLengthNotMatchError (expected, actual))
-
-let not_indexable t = raise (NotIndexableError t)
-let not_structure t = raise (NotStructureError t)
-let unknown_field s f = raise (UnknownFieldError { structure = s; field = f })
+let length_of = List.length
 
 (**
     compare([te.annot], [t]) -> [te.annot]
 *)
-let check te t = if te.annot <> t then unexpected_type t te.annot else te
+let check te t =
+  if te.annot <> t then
+    raise (UnexpectedTypeError { expected = t; actual = te.annot })
+  else te
 
-let compareAnnot e1 e2 = e1.annot = e2.annot
+let is_same_type (e1 : typed_expr) (e2 : typed_expr) = e1.annot = e2.annot
 
 (** 
     [l]: List<Tuple<String, E>>;
@@ -52,15 +50,27 @@ let compareAnnot e1 e2 = e1.annot = e2.annot
 let add2env l env = List.fold_left (fun env (x, t) -> Env.add x t env) env l
 
 (* main typing function *)
-let type_program (p : unit program) : typ program =
+let type_program (p : untyped_prog) : typed_prog =
   (* initialize global environments *)
   let tenv = add2env p.globals Env.empty
   and fenv =
     add2env
       (List.map (fun (f : unit function_def) -> (f.name, f)) p.functions)
       Env.empty
-  and senv = add2env (List.map (fun s -> (s.name, s)) p.structs) Env.empty in
-
+  and cenv = add2env (List.map (fun s -> (s.name, s)) p.classes) Env.empty in
+  let type_of_var (id : string) =
+    match Env.find_opt id tenv with
+    | Some t -> t
+    | None -> raise (UndefinedVariableError id)
+  and def_of_func (id : string) : untyped_func =
+    match Env.find_opt id fenv with
+    | Some def -> def
+    | None -> raise (UndefinedFunctionError id)
+  and def_of_class (id : string) =
+    match Env.find_opt id cenv with
+    | Some def -> def
+    | None -> raise (ClassNotFoundError id)
+  in
   (* typing a function definition *)
   let type_fdef fdef =
     (* add local elements to the environments *)
@@ -70,7 +80,7 @@ let type_program (p : unit program) : typ program =
        inner functions, without making them explicit arguments *)
 
     (* type expressions *)
-    let rec type_expr (e : unit expression) : typ expression =
+    let rec type_expr (e : untyped_expr) : typed_expr =
       match e.expr with
       | Cst n -> mk_expr TInt (Cst n)
       | Bool b -> mk_expr TBool (Bool b)
@@ -78,40 +88,61 @@ let type_program (p : unit program) : typ program =
       | Binop (op, e1, e2) ->
           let typed_e1 = type_expr e1 and typed_e2 = type_expr e2 in
           let op_t = match op with Add -> TInt | Mul -> TInt | Lt -> TBool in
-          if compareAnnot typed_e1 typed_e2 then
+          if is_same_type typed_e1 typed_e2 then
             mk_expr op_t (Binop (op, typed_e1, typed_e2))
-          else unexpected_type typed_e1.annot typed_e2.annot
+          else
+            raise
+              (UnexpectedTypeError
+                 { expected = typed_e1.annot; actual = typed_e2.annot })
       | Call (name, args) ->
           let fd = Env.find name fenv in
           let params = fd.params in
-          let length_of = List.length in
           (* check arguments quantity *)
           let argc = length_of args and paramc = length_of params in
-          if argc <> paramc then not_match paramc argc (* check argument type *)
+          if argc <> paramc then
+            raise
+              (ArgumentLengthNotMatchError { expected = paramc; actual = argc })
           else
-            (* check each argument *)
+            (* check each argument type *)
             let typed_args =
               List.map2
-                (fun arg (name, param_t) ->
-                  let typed_arg = type_expr arg in
-                  if
-                    typed_arg.annot = param_t
-                    (* if match return the typed argument *)
-                  then typed_arg (* else raise exception *)
-                  else unexpected_type param_t typed_arg.annot)
+                (fun arg (name, param_t) -> check (type_expr arg) param_t)
                 args params
             in
             (* typed the call by return type *)
             mk_expr fd.return (Call (name, typed_args))
-      | New t -> mk_expr (TStruct t) (New t)
+      | New (class_name, constructor) ->
+          let _ = def_of_class class_name in
+          mk_expr (TClass class_name)
+            (New (class_name, List.map type_expr constructor))
       | NewTab (t, size) ->
-          let typed_size = type_expr size in
           (* check [size] is of type Int *)
-          if typed_size.annot <> TInt then unexpected_type TInt typed_size.annot
-          else mk_expr (TArray t) (NewTab (t, typed_size))
+          let typed_size = check (type_expr size) TInt in
+          mk_expr (TArray t) (NewTab (t, typed_size))
       | Read memeory ->
           let mem_t, typed_mem = type_mem memeory in
           mk_expr mem_t (Read typed_mem)
+      | This ->
+          let this_t = type_of_var "this" in
+          mk_expr this_t This
+      | MCall (obj, method_name, args) ->
+          let typed_obj = type_expr obj in
+          let obj_t = typed_obj.annot in
+          let class_def : untyped_class =
+            match obj_t with
+            | TClass name -> def_of_class name
+            | other ->
+                raise
+                  (UnexpectedTypeError
+                     {
+                       expected = TClass (sf "has [%s] as method" method_name);
+                       actual = other;
+                     })
+          in
+          let method_def = def_of_func method_name in
+          let return_t = method_def.return in
+          mk_expr return_t
+            (MCall (type_expr obj, method_name, List.map type_expr args))
     and type_mem m =
       (* Return (element_type, typed_memory_access) *)
       match m with
@@ -122,18 +153,24 @@ let type_program (p : unit program) : typ program =
           let typed_array = type_expr id in
           match typed_array.annot with
           | TArray t -> (t, Arr (typed_array, typed_index))
-          | other_type -> not_indexable other_type)
-      | Str (id, field) -> (
+          | other_type -> raise (NotIndexableError other_type))
+      | Atr (id, field) -> (
           let typed_id = type_expr id in
           (* check [id] is of type structure *)
           match typed_id.annot with
-          | TStruct s -> (
-              let sd = Env.find s senv in
-              (* find [field] definition *)
-              match List.find_opt (fun (fid, t) -> fid = field) sd.fields with
-              | Some (fid, ft) -> (ft, Str (typed_id, field))
-              | None -> unknown_field sd.name field)
-          | other_type -> not_structure other_type)
+          | TClass s ->
+              let class_def = def_of_class s in
+              let fields = class_def.fields in
+              let field_t =
+                match List.find_opt (fun (fid, ft) -> fid = field) fields with
+                | Some (fid, ft) -> ft
+                | None -> raise (UnknownFieldError { clazz = s; field })
+              in
+              (field_t, Atr (typed_id, field))
+          | t ->
+              raise
+                (UnexpectedTypeError
+                   { expected = TClass (sf "has field %s" field); actual = t }))
     in
 
     (* type instructions *)
@@ -162,4 +199,14 @@ let type_program (p : unit program) : typ program =
     in
     { fdef with code = type_seq fdef.code }
   in
-  { p with functions = List.map type_fdef p.functions }
+  let type_cdef (cdef : untyped_class) : typed_class =
+    (* TODO: inject [this] as varilable *)
+    (* TODO: inject fields as varilable *)
+    (* TODO: inject method as functions *)
+    { cdef with methods = List.map type_fdef cdef.methods }
+  in
+  {
+    p with
+    functions = List.map type_fdef p.functions;
+    classes = List.map type_cdef p.classes;
+  }
