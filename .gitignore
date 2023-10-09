@@ -4,3 +4,5 @@ _build
 *.exe
 
 instructions.*
+
+.DS_Store
