@@ -1,13 +1,13 @@
 (ocamllex
- (modules objlnglexer))
+ (modules objlanglexer))
 
 (menhir
- (modules objlngparser)
+ (modules objlangparser)
  (flags --explain --dump)
  (infer true))
 
 (executable
- (name asimpc)
+ (name objlangc)
  (promote (until-clean))
  (flags ()))
 

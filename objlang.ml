@@ -79,3 +79,23 @@ type 'a program = {
   functions : 'a function_def list;
   classes : 'a class_def list;
 }
+
+(* expression *)
+type untyped_expression = unit expression
+type typed_expression = typ expression
+
+(* instruction *)
+type untyped_instruction = unit instruction
+type typed_instruction = typ instruction
+
+(* function *)
+type untyped_function = unit function_def
+type typed_function = typ function_def
+
+(* class *)
+type untyped_class = unit class_def
+type typed_class = typ class_def
+
+(* program *)
+type untyped_program = unit program
+type typed_program = typ program

@@ -1,7 +1,7 @@
 %{
 
   open Lexing
-  open Objlng
+  open Objlang
 
   let classes = ref []
   let globals = ref []
@@ -29,7 +29,7 @@
 %nonassoc LBRACKET DOT
 
 %start program
-%type <unit Objlng.program> program
+%type <unit Objlang.program> program
 
 %%
 

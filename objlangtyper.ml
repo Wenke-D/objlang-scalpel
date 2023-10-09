@@ -1,4 +1,4 @@
-open Objlng
+open Objlang
 open TypeError
 open Debug
 
@@ -14,35 +14,36 @@ type fenv = unit function_def Env.t
 type senv = unit class_def Env.t
 (** map<String, class_def<unit>> *)
 
-(* expression *)
-type untyped_expr = unit expression
-type typed_expr = typ expression
-
-(* function *)
-type untyped_func = unit function_def
-type typed_func = typ function_def
-
-(* class *)
-type untyped_class = unit class_def
-type typed_class = typ class_def
-
-(* program *)
-type untyped_prog = unit program
-type typed_prog = typ program
-
 let length_of = List.length
 
 (**
     compare([te.annot], [t]) -> [te.annot]
 *)
-let check (te : typed_expr) t =
+let check te t =
   if te.annot <> t then
     raise
       (UnexpectedTypeError
          { expected = Definition t; actual = Definition te.annot })
   else te
 
-let is_same_type (e1 : typed_expr) (e2 : typed_expr) = e1.annot = e2.annot
+(** Checks if [t] is of the a class type.
+
+    If true, calls 'true_handler' with the class name as an argument.
+  
+    Otherwise, raises an 'UnexpectedTypeError' 
+    using the 'behaviour' argument to detail the expected type.
+
+    @return what true handler returns
+*)
+let require_class t true_handler behaviour =
+  match t with
+  | TClass name -> true_handler name
+  | other_t ->
+      raise
+        (UnexpectedTypeError
+           { expected = Behavior behaviour; actual = Definition other_t })
+
+let is_same_type e1 e2 = e1.annot = e2.annot
 
 (** 
     [l]: List<Tuple<String, E>>;
@@ -52,7 +53,7 @@ let is_same_type (e1 : typed_expr) (e2 : typed_expr) = e1.annot = e2.annot
 let add2env l env = List.fold_left (fun env (x, t) -> Env.add x t env) env l
 
 (* main typing function *)
-let type_program (p : untyped_prog) : typed_prog =
+let type_program (p : untyped_program) : typed_program =
   (* initialize global environments *)
   let tenv = add2env p.globals Env.empty
   and fenv =
@@ -64,7 +65,7 @@ let type_program (p : untyped_prog) : typed_prog =
     match Env.find_opt id tenv with
     | Some t -> t
     | None -> raise (UndefinedError (Variable id))
-  and def_of_func (id : string) : untyped_func =
+  and def_of_func (id : string) : untyped_function =
     match Env.find_opt id fenv with
     | Some def -> def
     | None -> raise (UndefinedError (Function id))
@@ -74,7 +75,7 @@ let type_program (p : untyped_prog) : typed_prog =
     | None -> raise (UndefinedError (Class id))
   in
   (* typing a function definition *)
-  let type_fdef fdef =
+  let type_fdef fdef : typed_function =
     (* add local elements to the environments *)
     let tenv = add2env fdef.locals tenv in
 
@@ -82,7 +83,7 @@ let type_program (p : untyped_prog) : typed_prog =
        inner functions, without making them explicit arguments *)
 
     (* type expressions *)
-    let rec type_expr (e : untyped_expr) : typed_expr =
+    let rec type_expr (e : untyped_expression) : typed_expression =
       match e.expr with
       | Cst n -> mk_expr TInt (Cst n)
       | Bool b -> mk_expr TBool (Bool b)
@@ -100,7 +101,7 @@ let type_program (p : untyped_prog) : typed_prog =
                    actual = Definition typed_e2.annot;
                  })
       | Call (name, args) ->
-          let fd = Env.find name fenv in
+          let fd = def_of_func name in
           let params = fd.params in
           (* check arguments quantity *)
           let argc = length_of args and paramc = length_of params in
@@ -132,18 +133,14 @@ let type_program (p : untyped_prog) : typed_prog =
       | MCall (obj, method_name, args) ->
           let typed_obj = type_expr obj in
           let obj_t = typed_obj.annot in
-          let class_def : untyped_class =
-            match obj_t with
-            | TClass name -> def_of_class name
-            | other ->
-                raise
-                  (UnexpectedTypeError
-                     {
-                       expected = Behavior (HasMethod method_name);
-                       actual = Definition other;
-                     })
+          let class_def =
+            require_class obj_t def_of_class (HasMethod method_name)
           in
-          let method_def = def_of_func method_name in
+          let method_def =
+            List.find
+              (fun (def : untyped_function) -> def.name = method_name)
+              class_def.methods
+          in
           let return_t = method_def.return in
           mk_expr return_t
             (MCall (type_expr obj, method_name, List.map type_expr args))
@@ -164,26 +161,19 @@ let type_program (p : untyped_prog) : typed_prog =
                      expected = Behavior Indexable;
                      actual = Definition other_type;
                    }))
-      | Atr (id, field) -> (
+      | Atr (id, field) ->
           let typed_id = type_expr id in
-          (* check [id] is of type structure *)
-          match typed_id.annot with
-          | TClass s ->
-              let class_def = def_of_class s in
-              let fields = class_def.fields in
-              let field_t =
-                match List.find_opt (fun (fid, ft) -> fid = field) fields with
-                | Some (fid, ft) -> ft
-                | None -> raise (UndefinedError (Attribute (s, field)))
-              in
-              (field_t, Atr (typed_id, field))
-          | t ->
-              raise
-                (UnexpectedTypeError
-                   {
-                     expected = Behavior (HasField field);
-                     actual = Definition t;
-                   }))
+          let type_attribute_access class_name =
+            let class_def = def_of_class class_name in
+            let fields = class_def.fields in
+            let field_t =
+              match List.find_opt (fun (fid, ft) -> fid = field) fields with
+              | Some (fid, ft) -> ft
+              | None -> raise (UndefinedError (Attribute (class_name, field)))
+            in
+            (field_t, Atr (typed_id, field))
+          in
+          require_class typed_id.annot type_attribute_access (HasField field)
     in
 
     (* type instructions *)
