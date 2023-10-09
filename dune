@@ -15,3 +15,8 @@
  (dev
   (flags
    (:standard -w -50))))
+
+(rule
+ (alias clean-test)
+ (action
+  (bash "rm -f ../../tests/*.asm")))
