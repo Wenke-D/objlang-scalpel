@@ -35,9 +35,11 @@ let length_of = List.length
 (**
     compare([te.annot], [t]) -> [te.annot]
 *)
-let check te t =
+let check (te : typed_expr) t =
   if te.annot <> t then
-    raise (UnexpectedTypeError { expected = t; actual = te.annot })
+    raise
+      (UnexpectedTypeError
+         { expected = Definition t; actual = Definition te.annot })
   else te
 
 let is_same_type (e1 : typed_expr) (e2 : typed_expr) = e1.annot = e2.annot
@@ -61,15 +63,15 @@ let type_program (p : untyped_prog) : typed_prog =
   let type_of_var (id : string) =
     match Env.find_opt id tenv with
     | Some t -> t
-    | None -> raise (UndefinedVariableError id)
+    | None -> raise (UndefinedError (Variable id))
   and def_of_func (id : string) : untyped_func =
     match Env.find_opt id fenv with
     | Some def -> def
-    | None -> raise (UndefinedFunctionError id)
+    | None -> raise (UndefinedError (Function id))
   and def_of_class (id : string) =
     match Env.find_opt id cenv with
     | Some def -> def
-    | None -> raise (ClassNotFoundError id)
+    | None -> raise (UndefinedError (Class id))
   in
   (* typing a function definition *)
   let type_fdef fdef =
@@ -93,15 +95,17 @@ let type_program (p : untyped_prog) : typed_prog =
           else
             raise
               (UnexpectedTypeError
-                 { expected = typed_e1.annot; actual = typed_e2.annot })
+                 {
+                   expected = Definition typed_e1.annot;
+                   actual = Definition typed_e2.annot;
+                 })
       | Call (name, args) ->
           let fd = Env.find name fenv in
           let params = fd.params in
           (* check arguments quantity *)
           let argc = length_of args and paramc = length_of params in
           if argc <> paramc then
-            raise
-              (ArgumentLengthNotMatchError { expected = paramc; actual = argc })
+            raise (MissingArgumentError { expected = paramc; actual = argc })
           else
             (* check each argument type *)
             let typed_args =
@@ -135,8 +139,8 @@ let type_program (p : untyped_prog) : typed_prog =
                 raise
                   (UnexpectedTypeError
                      {
-                       expected = TClass (sf "has [%s] as method" method_name);
-                       actual = other;
+                       expected = Behavior (HasMethod method_name);
+                       actual = Definition other;
                      })
           in
           let method_def = def_of_func method_name in
@@ -153,7 +157,13 @@ let type_program (p : untyped_prog) : typed_prog =
           let typed_array = type_expr id in
           match typed_array.annot with
           | TArray t -> (t, Arr (typed_array, typed_index))
-          | other_type -> raise (NotIndexableError other_type))
+          | other_type ->
+              raise
+                (UnexpectedTypeError
+                   {
+                     expected = Behavior Indexable;
+                     actual = Definition other_type;
+                   }))
       | Atr (id, field) -> (
           let typed_id = type_expr id in
           (* check [id] is of type structure *)
@@ -164,13 +174,16 @@ let type_program (p : untyped_prog) : typed_prog =
               let field_t =
                 match List.find_opt (fun (fid, ft) -> fid = field) fields with
                 | Some (fid, ft) -> ft
-                | None -> raise (UnknownFieldError { clazz = s; field })
+                | None -> raise (UndefinedError (Attribute (s, field)))
               in
               (field_t, Atr (typed_id, field))
           | t ->
               raise
                 (UnexpectedTypeError
-                   { expected = TClass (sf "has field %s" field); actual = t }))
+                   {
+                     expected = Behavior (HasField field);
+                     actual = Definition t;
+                   }))
     in
 
     (* type instructions *)
