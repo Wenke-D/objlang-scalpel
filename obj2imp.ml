@@ -75,7 +75,7 @@ let translate_program (p : Input.typed_program) : Output.program =
     | NewTab (t, size) ->
         Alloc (Binop (Mul, Cst (sizeof expr_type), tr_expr size))
     | Read mem -> Deref (tr_expr (tr_mem mem))
-    | This -> todo "evalute this"
+    | This -> Var "this"
     | MCall (obj, method_name, args) -> todo ""
   and tr_mem (mem_access : Input.typ Input.mem) : Input.typed_expression =
     match mem_access with

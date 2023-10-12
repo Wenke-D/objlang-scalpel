@@ -45,6 +45,11 @@ and 'a mem =
 
 let mk_expr a e = { annot = a; expr = e }
 
+(** 
+    literal varilable name as local varilable when injecting this as a local varilable
+*)
+let this_variable_name = "this"
+
 type 'a instruction =
   | Putchar of 'a expression
   | Set of string * 'a expression

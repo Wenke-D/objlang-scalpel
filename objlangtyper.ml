@@ -43,6 +43,27 @@ let require_class t true_handler behaviour =
         (UnexpectedTypeError
            { expected = Behavior behaviour; actual = Definition other_t })
 
+(** 
+  Check if [t] is array.
+  if is the case apply handler on the element type of this array
+*)
+let require_array t true_handler =
+  match t with
+  | TArray t -> true_handler t
+  | other_t ->
+      raise
+        (UnexpectedTypeError
+           { expected = Behavior Indexable; actual = Definition other_t })
+
+let method_of_class name class_def =
+  match
+    List.find_opt
+      (fun (def : untyped_function) -> def.name = name)
+      class_def.methods
+  with
+  | Some d -> d
+  | None -> raise (UndefinedError (Method (class_def.name, name)))
+
 let is_same_type e1 e2 = e1.annot = e2.annot
 
 (** 
@@ -51,6 +72,9 @@ let is_same_type e1 e2 = e1.annot = e2.annot
     [return]: Map<String, E>
     *)
 let add2env l env = List.fold_left (fun env (x, t) -> Env.add x t env) env l
+
+let remove_from_env l env =
+  List.fold_left (fun env (x, t) -> Env.remove x env) env l
 
 (* main typing function *)
 let type_program (p : untyped_program) : typed_program =
@@ -110,9 +134,7 @@ let type_program (p : untyped_program) : typed_program =
           else
             (* check each argument type *)
             let typed_args =
-              List.map2
-                (fun arg (name, param_t) -> check (type_expr arg) param_t)
-                args params
+              check_expr_list args (List.map (fun (_, t) -> t) params)
             in
             (* typed the call by return type *)
             mk_expr fd.return (Call (name, typed_args))
@@ -128,7 +150,7 @@ let type_program (p : untyped_program) : typed_program =
           let mem_t, typed_mem = type_mem memeory in
           mk_expr mem_t (Read typed_mem)
       | This ->
-          let this_t = type_of_var "this" in
+          let this_t = type_of_var this_variable_name in
           mk_expr this_t This
       | MCall (obj, method_name, args) ->
           let typed_obj = type_expr obj in
@@ -136,31 +158,22 @@ let type_program (p : untyped_program) : typed_program =
           let class_def =
             require_class obj_t def_of_class (HasMethod method_name)
           in
-          let method_def =
-            List.find
-              (fun (def : untyped_function) -> def.name = method_name)
-              class_def.methods
-          in
+          let method_def = method_of_class method_name class_def in
           let return_t = method_def.return in
-          mk_expr return_t
-            (MCall (type_expr obj, method_name, List.map type_expr args))
+          let typed_args =
+            check_expr_list args (List.map (fun (_, t) -> t) method_def.params)
+          in
+          mk_expr return_t (MCall (type_expr obj, method_name, typed_args))
     and type_mem m =
       (* Return (element_type, typed_memory_access) *)
       match m with
-      | Arr (id, index) -> (
+      | Arr (id, index) ->
           (* check [index] is of type Int *)
           let typed_index = check (type_expr index) TInt in
           (* check [id] is an array that can be indexed *)
           let typed_array = type_expr id in
-          match typed_array.annot with
-          | TArray t -> (t, Arr (typed_array, typed_index))
-          | other_type ->
-              raise
-                (UnexpectedTypeError
-                   {
-                     expected = Behavior Indexable;
-                     actual = Definition other_type;
-                   }))
+          require_array typed_array.annot (fun t ->
+              (t, Arr (typed_array, typed_index)))
       | Atr (id, field) ->
           let typed_id = type_expr id in
           let type_attribute_access class_name =
@@ -174,18 +187,18 @@ let type_program (p : untyped_program) : typed_program =
             (field_t, Atr (typed_id, field))
           in
           require_class typed_id.annot type_attribute_access (HasField field)
+    and check_expr_list expressions types =
+      List.map2 (fun expr t -> check (type_expr expr) t) expressions types
     in
 
     (* type instructions *)
     let rec type_seq s = List.map type_instr s
     and type_instr = function
       | Putchar e -> Putchar (check (type_expr e) TInt)
-      | Set (id, e) -> (
-          match Env.find_opt id tenv with
-          | None -> failwith (Printf.sprintf "%s is not defined" id)
-          | Some id_t ->
-              let typed_e = type_expr e in
-              Set (id, check typed_e id_t))
+      | Set (id, e) ->
+          let id_t = type_of_var id in
+          let typed_e = type_expr e in
+          Set (id, check typed_e id_t)
       | If (c, b1, b2) ->
           let typed_c = check (type_expr c) TBool in
           If (typed_c, type_seq b1, type_seq b2)
@@ -203,10 +216,15 @@ let type_program (p : untyped_program) : typed_program =
     { fdef with code = type_seq fdef.code }
   in
   let type_cdef (cdef : untyped_class) : typed_class =
-    (* TODO: inject [this] as varilable *)
-    (* TODO: inject fields as varilable *)
-    (* TODO: inject method as functions *)
-    { cdef with methods = List.map type_fdef cdef.methods }
+    (* inject [this] and [attributes] as varilables *)
+    let tenv = Env.add this_variable_name (TClass cdef.name) tenv in
+    let tenv = add2env cdef.fields tenv in
+    (* type class methods *)
+    let result = { cdef with methods = List.map type_fdef cdef.methods } in
+    (* remove [this] and [attributes] from varilables *)
+    let tenv = Env.remove this_variable_name tenv in
+    let _ = remove_from_env cdef.fields tenv in
+    result
   in
   {
     p with
