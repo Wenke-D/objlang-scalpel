@@ -52,8 +52,11 @@ let () =
     exit 0
   with
   | CompilationException.SyntaxError p ->
-      prerr_endline (CompilationException.format_syntax_error p)
+      prerr_endline (CompilationException.format_syntax_error p);
+      exit 1
   | CompilationException.CompilationFailure m ->
-      prerr_endline (CompilationException.format_compilation_failure m)
+      prerr_endline (CompilationException.format_compilation_failure m);
+      exit 1
   | TypeError.UndefinedError data ->
-      print_endline (TypeError.format_undefined_error data)
+      print_endline (TypeError.format_undefined_error data);
+      exit 1
