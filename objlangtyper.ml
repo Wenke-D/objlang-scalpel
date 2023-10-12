@@ -85,11 +85,8 @@ let type_program (p : untyped_program) : typed_program =
       (List.map (fun (f : unit function_def) -> (f.name, f)) p.functions)
       Env.empty
   and cenv = add2env (List.map (fun s -> (s.name, s)) p.classes) Env.empty in
-  let type_of_var (id : string) =
-    match Env.find_opt id tenv with
-    | Some t -> t
-    | None -> raise (UndefinedError (Variable id))
-  and def_of_func (id : string) : untyped_function =
+
+  let def_of_func (id : string) : untyped_function =
     match Env.find_opt id fenv with
     | Some def -> def
     | None -> raise (UndefinedError (Function id))
@@ -99,9 +96,15 @@ let type_program (p : untyped_program) : typed_program =
     | None -> raise (UndefinedError (Class id))
   in
   (* typing a function definition *)
-  let type_fdef fdef : typed_function =
-    (* add local elements to the environments *)
+  let type_fdef (fdef : untyped_function) : typed_function =
+    (* inject local varilables *)
     let tenv = add2env fdef.locals tenv in
+    let tenv = add2env fdef.params tenv in
+    let type_of_var (id : string) =
+      match Env.find_opt id tenv with
+      | Some t -> t
+      | None -> raise (UndefinedError (Variable id))
+    in
 
     (* note: nested definitions ensure that all environments are known to the
        inner functions, without making them explicit arguments *)
@@ -111,7 +114,7 @@ let type_program (p : untyped_program) : typed_program =
       match e.expr with
       | Cst n -> mk_expr TInt (Cst n)
       | Bool b -> mk_expr TBool (Bool b)
-      | Var x -> mk_expr (Env.find x tenv) (Var x)
+      | Var x -> mk_expr (type_of_var x) (Var x)
       | Binop (op, e1, e2) ->
           let typed_e1 = type_expr e1 and typed_e2 = type_expr e2 in
           let op_t = match op with Add -> TInt | Mul -> TInt | Lt -> TBool in
