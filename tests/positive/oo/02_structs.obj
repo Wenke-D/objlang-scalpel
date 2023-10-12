@@ -1,0 +1,24 @@
+class pair {
+  attribute int x;
+  attribute int y;
+}
+class triple {
+  attribute int a;
+  attribute pair b;
+}
+
+function void main() {
+  var pair p;
+  var triple t;
+  p = new pair(1,2);
+  t = new triple(3, 4);
+  t.a = 1;
+  t.b = p;
+  t.b.x = 2;
+  p.y = 3;
+  putchar(48 + t.a);
+  putchar(48 + t.b.x);
+  putchar(48 + t.b.y);
+}
+
+// prints 123

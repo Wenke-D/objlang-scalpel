@@ -1,0 +1,15 @@
+function void main() {
+  var [int] tab;
+  var int i;
+  tab = new [int, 10];
+  tab[0] = 0;
+  tab[1] = 1;
+  i = 0;
+  while (i < 8) {
+    tab[i+2] = tab[i+1] + tab[i];
+    i = i+1;
+  }
+  putchar(48 + tab[6]);
+}
+
+// prints 8

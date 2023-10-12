@@ -1,0 +1,13 @@
+function int double(int x) {
+  return(2*x);
+}
+
+function int sum(int x, int y) {
+  return(x+y);
+}
+
+function void main() {
+  putchar(48+sum(double(2), 1));
+}
+
+// prints '5'

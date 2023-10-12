@@ -1,0 +1,14 @@
+function void main() {
+  if (1 < 2) {
+    if (4 < 3) {
+      putchar(97);
+    } else {
+      putchar(98);
+    }
+  } else {
+    putchar(99);
+  }
+  putchar(100);
+}
+
+// prints 'bd'

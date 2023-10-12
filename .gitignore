@@ -1,4 +1,5 @@
-tests
+tests/**/*.asm
+tests/**/*.imp
 _build
 
 *.exe

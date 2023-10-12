@@ -1,0 +1,5 @@
+function void main() {
+  putchar(97+1+2*3+5);
+}
+
+// prints 'm'

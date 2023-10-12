@@ -1,0 +1,13 @@
+var int n;
+
+function void main() {
+  var int i;
+  n = 10;
+  i = 0;
+  while (i < n) {
+    putchar(48+i);
+    i = i+1;
+  }
+}
+
+// prints '0..9'

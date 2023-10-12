@@ -1,0 +1,14 @@
+var int x;
+
+function int double(int y) {
+  var int x;
+  x = y;
+  return(x+y);
+}
+
+function void main() {
+  x = 3;
+  putchar(48 + double(1) + double(x));
+}
+
+// prints '8'

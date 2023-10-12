@@ -1,0 +1,11 @@
+var int x;
+var int y;
+
+function void main() {
+  x = 1;
+  y = 2;
+  x = 3*y+x;
+  putchar(48+x+y);
+}
+
+// prints '9'
