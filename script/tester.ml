@@ -28,27 +28,15 @@ let rec find_obj_files path =
 let exec_name = "objlangc.exe"
 let test_dir_name = "tests"
 
-let exec_compiler c input =
-  let pf = Printf.printf in
-  let new_line = print_newline in
-  let print_bar () = print_endline "----------------" in
-  let print_title () = pf "compiling: %s\n" (Filename.basename input) in
-  let flush () = flush stdout in
-  let command = Format.sprintf "%s %s" c input in
-  let run () =
-    let res = Sys.command command in
-    new_line ();
-    if res = 0 then pf "%s success\n" input
-    else
-      pf "%s failed, copy this command for individual run:\n%s\n"
-        (Filename.basename input) command
-  in
-  print_bar ();
-  print_title ();
-  new_line ();
-  flush ();
-  run ();
-  print_bar ()
+(** Execute a program in silent.
+  All the output, stdout&stderr, of the program will be redirect to dev/null
+*)
+let shell_mute program arg =
+  let command = Format.sprintf "%s %s >/dev/null 2>&1" program arg in
+  let return = Sys.command command in
+  (program, arg, return)
+
+let format_command program arg = Format.sprintf "%s %s" program arg
 
 let () =
   let run_name = Sys.argv.(0) in
@@ -62,4 +50,16 @@ let () =
   else
     let test_dir = Filename.concat project_root test_dir_name in
     let all_test_case = find_obj_files test_dir in
-    List.iter (exec_compiler exec) all_test_case
+    if List.length all_test_case = 0 then (
+      print_endline "there are not test cases";
+      exit 0)
+    else
+      let results = List.map (shell_mute exec) all_test_case in
+      let failed_cases =
+        List.filter (fun (_, _, return) -> return <> 0) results
+      in
+      if List.length failed_cases = 0 then print_endline "All the tests succed!"
+      else print_endline "the following test failed: ";
+      List.iter
+        (fun (prog, arg, _) -> print_endline (format_command prog arg))
+        failed_cases
