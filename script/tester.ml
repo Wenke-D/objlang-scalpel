@@ -34,10 +34,14 @@ let exec_compiler c input =
   let print_bar () = print_endline "----------------" in
   let print_title () = pf "compiling: %s\n" (Filename.basename input) in
   let flush () = flush stdout in
+  let command = Format.sprintf "%s %s" c input in
   let run () =
-    let res = Sys.command (Format.sprintf "%s %s" c input) in
+    let res = Sys.command command in
     new_line ();
-    if res = 0 then pf "%s success\n" input else pf "%s failed\n" input
+    if res = 0 then pf "%s success\n" input
+    else
+      pf "%s failed, copy this command for individual run:\n%s\n"
+        (Filename.basename input) command
   in
   print_bar ();
   print_title ();
