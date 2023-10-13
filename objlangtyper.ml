@@ -107,7 +107,7 @@ let rec type_expr (context : type_context) (e : untyped_expression) :
       (* check arguments quantity *)
       let argc = length_of args and paramc = length_of params in
       if argc <> paramc then
-        raise (MissingArgumentError {expected= paramc; actual= argc})
+        raise (ArgumentLengthError {expected= paramc; actual= argc})
       else
         (* check each argument type *)
         let typed_args =

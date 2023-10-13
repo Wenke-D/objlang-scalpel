@@ -54,3 +54,5 @@ let () =
       exit_with_error (TypeError.format_undefined_error data)
   | TypeError.UnexpectedTypeError data ->
       exit_with_error (TypeError.format_unexpected_type_error data)
+  | TypeError.ArgumentLengthError data ->
+      exit_with_error (TypeError.format_argument_length_error data)
