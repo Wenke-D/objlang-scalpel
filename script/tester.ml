@@ -54,7 +54,8 @@ let () =
       let failed_cases =
         List.filter (fun (_, _, return) -> return <> 0) results
       in
-      if List.length failed_cases = 0 then print_endline "All the tests succed!"
+      if List.length failed_cases = 0 then
+        print_endline "All the tests are successful!"
       else print_endline "the following test failed: " ;
       List.iter
         (fun (prog, arg, _) -> print_endline (format_command prog arg))
