@@ -95,6 +95,10 @@ type untyped_instruction = unit instruction
 
 type typed_instruction = typ instruction
 
+type untyped_sequence = unit sequence
+
+type typed_sequence = typ sequence
+
 (* function *)
 type untyped_function = unit function_def
 
