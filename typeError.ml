@@ -24,19 +24,27 @@ exception MissingArgumentError of (int, int) unmatch_data
 
 let s_format = Format.sprintf
 
+let color_text color_code text =
+  Format.sprintf "\027[%dm%s\027[0m" color_code text
+
+let danger = color_text 31
+let warning = color_text 33
+let info = color_text 34
+
 let format_undefined_error data =
   let suffix =
     match data with
-    | Class name -> s_format "class [%s] is not defined" name
+    | Class name -> s_format "class '%s' is not defined" (info name)
     | Attribute (class_name, attribute_name) ->
-        s_format "class [%s] does not define attribute [%s]" class_name
-          attribute_name
+        s_format "class '%s' does not have a attribute '%s'" (info class_name)
+          (info attribute_name)
     | Method (class_name, method_name) ->
-        s_format "class [%s] does not define method [%s]" class_name method_name
-    | Variable name -> s_format "variable [%s] is not defined" name
-    | Function name -> s_format "function [%s] is not defined" name
+        s_format "class '%s' does not have a method '%s'" (info class_name)
+          (info method_name)
+    | Variable name -> s_format "variable '%s' is not defined" (info name)
+    | Function name -> s_format "function '%s' is not defined" (info name)
   in
-  s_format "Undefined error: %s" suffix
+  s_format "%s: %s" (danger "Error") suffix
 
 let format_unexpected_type_error data =
   let format_type_behavior tb =
