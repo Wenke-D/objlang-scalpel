@@ -1,4 +1,5 @@
 open Format
+open ErrorHandle
 
 let () = Printexc.record_backtrace true
 let source_file_extension = ".obj"
@@ -52,11 +53,8 @@ let () =
     exit 0
   with
   | CompilationException.SyntaxError p ->
-      prerr_endline (CompilationException.format_syntax_error p);
-      exit 1
+      exit_with_error (CompilationException.format_syntax_error p)
   | CompilationException.CompilationFailure m ->
-      prerr_endline (CompilationException.format_compilation_failure m);
-      exit 1
+      exit_with_error (CompilationException.format_compilation_failure m)
   | TypeError.UndefinedError data ->
-      print_endline (TypeError.format_undefined_error data);
-      exit 1
+      exit_with_error (TypeError.format_undefined_error data)

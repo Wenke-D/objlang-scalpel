@@ -94,11 +94,18 @@ let type_program (p : untyped_program) : typed_program =
     match Env.find_opt id cenv with
     | Some def -> def
     | None -> raise (UndefinedError (Class id))
+  and def_of_method (id : string) (clazz : untyped_class) =
+    match
+      List.find_opt (fun (fd : untyped_function) -> fd.name = id) clazz.methods
+    with
+    | Some def -> def
+    | None -> raise (UndefinedError (Method (clazz.name, id)))
   in
   (* typing a function definition *)
   let type_fdef (fdef : untyped_function) : typed_function =
     (* inject local varilables *)
     let tenv = add2env fdef.locals tenv in
+    (* inject parameters as local varilables *)
     let tenv = add2env fdef.params tenv in
     let type_of_var (id : string) =
       match Env.find_opt id tenv with
@@ -141,10 +148,12 @@ let type_program (p : untyped_program) : typed_program =
             in
             (* typed the call by return type *)
             mk_expr fd.return (Call (name, typed_args))
-      | New (class_name, constructor) ->
-          let _ = def_of_class class_name in
-          mk_expr (TClass class_name)
-            (New (class_name, List.map type_expr constructor))
+      | New (class_name, args) ->
+          let class_def = def_of_class class_name in
+          let constructor_def = def_of_method "constructor" class_def in
+          let params_t = List.map (fun (_, t) -> t) constructor_def.params in
+          let typed_args = check_expr_list args params_t in
+          mk_expr (TClass class_name) (New (class_name, typed_args))
       | NewTab (t, size) ->
           (* check [size] is of type Int *)
           let typed_size = check (type_expr size) TInt in
