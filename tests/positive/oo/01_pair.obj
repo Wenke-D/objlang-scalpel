@@ -1,4 +1,11 @@
-class pair { attribute int x; attribute int y; }
+class pair { 
+  attribute int x; 
+  attribute int y; 
+  method pair constructor(int x, int y){
+    this.x = x;
+    this.y = y;
+  }
+  }
 
 function void main() {
   var pair p;
