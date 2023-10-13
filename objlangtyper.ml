@@ -75,7 +75,8 @@ let remove_from_env l env =
   List.fold_left (fun env (x, t) -> Env.remove x env) env l
 
 
-(* main typing function *)
+(** Type and check a program type every constructs of a program and perform type
+    checking on each construct. Exit and report the error when meeting an error. *)
 let type_program (p : untyped_program) : typed_program =
   (* initialize global environments *)
   let tenv = add2env p.globals Env.empty
