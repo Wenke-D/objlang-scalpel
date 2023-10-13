@@ -1,17 +1,10 @@
-(**
-   Abstract syntax for the IMP language.
-   Definition of types and data structures to represent an IMP program
-   as caml data.
- *)
+(** Abstract syntax for the IMP language. Definition of types and data
+    structures to represent an IMP program as caml data. *)
 
-(**
-   Binary operators: +, *, <
- *)
+(** Binary operators: +, *, < *)
 type binop = Add | Mul | Lt
 
-(**
-   Data structure for expressions
- *)
+(** Data structure for expressions *)
 type expression =
   (* Integer constant: 0, -1, 42, ... *)
   | Cst of int
@@ -26,20 +19,15 @@ type expression =
   (* Dereference a pointer *)
   | Deref of expression (*   *e   *)
   (* Allocate some memory *)
-  | Alloc of expression  (**
-   An expression:
-     (1 + x) * f(3, true)
- *)
+  | Alloc of expression  (** An expression: (1 + x) * f(3, true) *)
 
-let e =
-  Binop (Mul, Binop (Add, Cst 1, Var "x"), Call ("f", [ Cst 3; Bool true ]))
+let e = Binop (Mul, Binop (Add, Cst 1, Var "x"), Call ("f", [Cst 3; Bool true]))
 
 let array_offset t i = Binop (Add, t, Binop (Mul, Cst 4, i))
+
 let array_access t i = Deref (array_offset t i)
 
-(**
-   Data structure for instructions
-*)
+(** Data structure for instructions *)
 type instruction =
   (* Primitive operation for printing a char, given as ASCII code *)
   | Putchar of expression
@@ -68,24 +56,22 @@ and sequence = instruction list
  *)
 let i =
   While
-    ( Binop (Lt, Var "c", Cst 58),
-      [ Putchar (Var "c"); Set ("c", Binop (Add, Var "x", Cst 1)) ] )
+    ( Binop (Lt, Var "c", Cst 58)
+    , [Putchar (Var "c"); Set ("c", Binop (Add, Var "x", Cst 1))] )
+
 
 let array_write t i e = Write (array_offset t i, e)
 
-type function_def = {
-  (* Function name *)
-  name : string;
-  (* List of named parameters *)
-  params : string list;
-  (* List of named local variables *)
-  locals : string list;
-  (* The actual code *)
-  code : sequence;
-}
-(** 
-   Data structure for a function definition
- *)
+(** Data structure for a function definition *)
+type function_def =
+  { (* Function name *)
+    name: string
+  ; (* List of named parameters *)
+    params: string list
+  ; (* List of named local variables *)
+    locals: string list
+  ; (* The actual code *)
+    code: sequence }
 
 (**
    A function:
@@ -99,22 +85,18 @@ type function_def = {
      }
  *)
 let f =
-  {
-    name = "digits";
-    params = [ "start" ];
-    locals = [ "c" ];
-    code = [ Set ("c", Binop (Add, Var "start", Cst 48)); i ];
-  }
+  { name= "digits"
+  ; params= ["start"]
+  ; locals= ["c"]
+  ; code= [Set ("c", Binop (Add, Var "start", Cst 48)); i] }
 
-type program = {
-  (* List of named global variables *)
-  globals : string list;
-  (* The functions defined by the program *)
-  functions : function_def list;
-}
-(**
-   Data structure for a program
- *)
+
+(** Data structure for a program *)
+type program =
+  { (* List of named global variables *)
+    globals: string list
+  ; (* The functions defined by the program *)
+    functions: function_def list }
 
 (**
    A programme:
@@ -135,16 +117,11 @@ type program = {
      }
  *)
 let p =
-  {
-    globals = [ "zero" ];
-    functions =
-      [
-        f;
-        {
-          name = "main";
-          params = [];
-          locals = [];
-          code = [ Set ("zero", Cst 0); Expr (Call ("digits", [ Var "zero" ])) ];
-        };
-      ];
+  { globals= ["zero"]
+  ; functions=
+      [ f
+      ; { name= "main"
+        ; params= []
+        ; locals= []
+        ; code= [Set ("zero", Cst 0); Expr (Call ("digits", [Var "zero"]))] } ]
   }
