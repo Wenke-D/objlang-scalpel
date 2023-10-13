@@ -58,4 +58,5 @@ let () =
       else print_endline "the following test failed: " ;
       List.iter
         (fun (prog, arg, _) -> print_endline (format_command prog arg))
-        failed_cases
+        failed_cases ;
+      print_endline "\nPlease run each command for output."
