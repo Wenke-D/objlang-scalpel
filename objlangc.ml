@@ -21,12 +21,7 @@ let () =
     in
     close_in c ;
     (* typing *)
-    let tprog =
-      try Objlangtyper.type_program prog
-      with TypeError.UnexpectedTypeError data ->
-        print_endline (TypeError.format_unexpected_type_error data) ;
-        exit 1
-    in
+    let tprog = Objlangtyper.type_program prog in
     (* to imp *)
     let imp = Obj2imp.translate_program tprog in
     (* output .imp *)
@@ -57,3 +52,5 @@ let () =
       exit_with_error (CompilationException.format_compilation_failure m)
   | TypeError.UndefinedError data ->
       exit_with_error (TypeError.format_undefined_error data)
+  | TypeError.UnexpectedTypeError data ->
+      exit_with_error (TypeError.format_unexpected_type_error data)

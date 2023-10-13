@@ -17,7 +17,7 @@ let rec string_of_typ t =
   | TBool ->
       "bool"
   | TClass name ->
-      "class: " ^ name
+      name
   | TArray typ ->
       "[" ^ string_of_typ typ ^ "]"
   | TVoid ->
