@@ -78,11 +78,10 @@ let remove_from_env l env =
 
 let rec type_expr (context : type_context) (e : untyped_expression) :
     typed_expression =
-  let inject f = f context in
-  let find_variable = inject find_variable in
-  let find_function = inject find_function in
-  let find_class = inject find_class in
-  let find_method = inject find_method in
+  let find_variable = find_variable context in
+  let find_function = find_function context in
+  let find_class = find_class context in
+  let find_method = find_method context in
   let rec_call = type_expr context in
   match e.expr with
   | Cst n ->
@@ -147,8 +146,7 @@ let rec type_expr (context : type_context) (e : untyped_expression) :
 
 
 and type_mem (context : type_context) (m : unit mem) =
-  let inject f = f context in
-  let find_class = inject find_class in
+  let find_class = find_class context in
   match m with
   | Arr (id, index) ->
       (* check [index] is of type Int *)
@@ -184,9 +182,8 @@ let rec type_seq context (f : untyped_function) (s : untyped_sequence) =
 
 and type_instr (context : type_context) (f : untyped_function)
     (instruction : untyped_instruction) =
-  let inject f = f context in
-  let find_variable = inject find_variable in
-  let type_expr = inject type_expr in
+  let find_variable = find_variable context in
+  let type_expr = type_expr context in
   let type_seq = type_seq context f in
   match instruction with
   | Putchar e ->
@@ -225,8 +222,9 @@ let type_class context (c : untyped_class) : typed_class =
   {c with methods= List.map (type_function context) c.methods}
 
 
-(** Type and check a program type every constructs of a program and perform type
-    checking on each construct. Exit and report the error when meeting an error. *)
+(** Type and check a program. Typing every construct of the program, and
+    performing type checking on each construct. Exit and report errors upon
+    encountering one. *)
 let type_program (p : untyped_program) : typed_program =
   let context = make_empty_context () in
   let context = add_classes context p.classes in
