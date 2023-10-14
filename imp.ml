@@ -20,6 +20,12 @@ type expression =
   | Deref of expression (*   *e   *)
   (* Allocate some memory *)
   | Alloc of expression  (** An expression: (1 + x) * f(3, true) *)
+  (* Address of a static element *)
+  | Addr of string
+  (* dynamic call to a funtion:
+     *(x+3)(1, 2, 8, y)
+  *)
+  | DCall of expression * expression list
 
 let e = Binop (Mul, Binop (Add, Cst 1, Var "x"), Call ("f", [Cst 3; Bool true]))
 
@@ -43,6 +49,8 @@ type instruction =
   | Expr of expression
   (* writing in memory *)
   | Write of expression * expression (*   *e1 = e2;   *)
+  (* intruction can be instruction list *)
+  | Seq of sequence
 
 (* Instruction sequence *)
 and sequence = instruction list
