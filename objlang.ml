@@ -19,7 +19,7 @@ let rec string_of_typ t =
   | TClass name ->
       name
   | TArray typ ->
-      "[" ^ string_of_typ typ ^ "]"
+      "Array<" ^ string_of_typ typ ^ ">"
   | TVoid ->
       "void"
 
