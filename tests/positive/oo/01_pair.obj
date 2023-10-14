@@ -5,7 +5,7 @@ class pair {
     this.x = x;
     this.y = y;
   }
-  }
+}
 
 function void main() {
   var pair p;

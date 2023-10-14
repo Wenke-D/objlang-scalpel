@@ -1,10 +1,19 @@
 class pair {
   attribute int x;
   attribute int y;
+    method pair constructor(int x, int y){
+    this.x = x;
+    this.y = y;
+  }
 }
 class triple {
   attribute int a;
   attribute pair b;
+
+  method triple constructor(int a, pair b){
+    this.a = a;
+    this.b = b;
+  }
 }
 
 function void main() {
