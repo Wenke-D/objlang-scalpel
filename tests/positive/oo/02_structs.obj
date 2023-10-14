@@ -20,7 +20,7 @@ function void main() {
   var pair p;
   var triple t;
   p = new pair(1,2);
-  t = new triple(3, 4);
+  t = new triple(3, p);
   t.a = 1;
   t.b = p;
   t.b.x = 2;
