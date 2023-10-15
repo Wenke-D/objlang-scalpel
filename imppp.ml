@@ -18,6 +18,10 @@ let rec print_expr fmt = function
       fprintf fmt "*@[%a@]" print_expr e
   | Alloc e ->
       fprintf fmt "alloc(@[%a@])" print_expr e
+  | Addr adr ->
+      fprintf fmt "addressOf(@[%a@])" print_expr e
+  | DCall (adr, args) ->
+      fprintf fmt "%a(@[%a@])" print_expr adr print_args args
 
 
 and print_args fmt = function
@@ -46,6 +50,8 @@ let rec print_instr fmt = function
       fprintf fmt "@[%a@];" print_expr e
   | Write (e1, e2) ->
       fprintf fmt "@[*%a =@ @[%a@];@]" print_expr e1 print_expr e2
+  | Seq s ->
+      print_seq fmt s
 
 
 and print_seq fmt = function
