@@ -1,7 +1,7 @@
 # Translation from OBJEling to IMP
 
 Consider the OBJEling class defined by the following code
-```
+```c++
 class point {
   attribute int x;
   attribute int y;
@@ -63,7 +63,7 @@ to the class descriptor of the class `point`.
 ## Translation of an assignment instruction
 
 Consider the OBJEling instruction
-```
+```c++
 p.x = 3*p.x;
 ```
 
@@ -80,7 +80,7 @@ Atr(Var "p", "x")
 This fragment denotes a memory location. It can be used for __reading__ from or
 __writing__ to memory, using expression constructor `Read` or instruction
 constructor `Write`. objlang AST for the instruction 
-```
+```c++
 p.x = 3 * p.x; 
 ```
 is then (omitting types):
@@ -107,7 +107,7 @@ that is 4.
 
 The fragment is translated
 into IMP as _(concrete IMP syntax)_:
-```
+```c++
   p + 4
 ```
 or _(abstract IMP syntax)_
@@ -120,12 +120,12 @@ For the remainder of the instruction: the `Read` access is translated using
 a `Deref` expression, and the `Write` access is translated using a `Write` instruction.
 
 Thus, objlang instruction 
-```
+```c++
 p.x = 3 * p.x
 ```
 translates to IMP _(concrete IMP syntax)_:
-```
-*(p+4) = 3 * *(p+4);
+```c++
+*(p+4) = 3 * (*(p+4));
 ``` 
 or _(abstract IMP syntax)_
 ``` OCaml
@@ -135,13 +135,13 @@ Write(ma', Binop(Mul, Cst 3, Unop(Read, ma')))
 ## Translation of a method call
 
 Consider the objlang expression 
-```
+```c++
 p.sum(48)
 ```
 
 objlang AST is (omitting types):
 
-```
+```OCaml
 MCall(Var "p", "sum", [Cst 48])
 ```
 
@@ -153,12 +153,12 @@ It comprises:
 The method call translates to IMP with a dynamic function call _(function called
 through a pointer rather than a name)_, with the two parameters `p` and `Cst 48`.
 
-If we write `f`` the function pointer, this gives:
-```
+If we write `f` the function pointer, this gives:
+```c++
   *f(p, 48)                     // concrete IMP syntax
 ```
 or
-```
+```OCaml
   DCall(f, [Var "p", Cst 48])   // abstract IMP syntax
 ```
 
@@ -286,13 +286,13 @@ type instruction =
 ```
 
 ### Address of static element
-```
+``` OCaml
 Addr of string
 ```
 It applies to the name of a statically allocated element (e.g. the name of a function), and returns its address.
 
 ### Dynamic call
-```
+``` OCaml
 DCall of expression * expression list
 ```
 It represents a "dynamic" call, that is a call made using a function pointer.
@@ -300,7 +300,7 @@ It represents a "dynamic" call, that is a call made using a function pointer.
 The first argument is an expression that computes this pointer, and the list contains the arguments (as it is the case for `Call`).
 
 ### Translate multiple instructions
-```
+``` OCaml
 Seq of sequence
 ```
 This constructor is convenient when a __single__ objlang instruction translates to (a sequence of) more than one Imp instructions.
