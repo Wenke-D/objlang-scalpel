@@ -32,7 +32,7 @@ let require_class t =
 
 let offset_of_method method_name (class_def : Input.typed_class) =
   let index = find_index class_def.methods (fun f -> f.name = method_name) in
-  index * address_size
+  (index * address_size) + address_size
 
 
 let tr_op : Input.binop -> Imp.binop = function
@@ -57,9 +57,9 @@ let translate_program (p : Input.typed_program) : Output.program =
     | TBool ->
         4
     | TClass s ->
-        let class_def = find_class s in
-        let fields = class_def.fields in
-        reduce (fun sum (id, t) -> sum + sizeof t) 0 fields
+        let classdef = find_class s in
+        (List.length classdef.fields * address_size) + address_size
+        (* varilable of class type is only an address *)
     | TArray t ->
         sizeof
           t (* !!! size of a array is only the size of its element type !!! *)
@@ -142,16 +142,18 @@ let translate_program (p : Input.typed_program) : Output.program =
     | Set (id, expr) -> (
         let code_assignment = Output.Set (id, tr_expr expr) in
         match expr.expr with
-        (* in case of creating a object *)
+        (* in case of creating an object *)
         | Input.New (classname, args) ->
             let descriptor_name = make_descriptor_name classname in
             let descriptor_ptr = Output.Addr descriptor_name in
-            let code_set_descriptor = Output.Write (Var id, descriptor_ptr) in
+            let code_set_descriptor =
+              Output.Write (Var id, Var descriptor_name)
+            in
             let code_call_constructor =
               let method_ptr =
                 Output.Deref (Binop (Add, descriptor_ptr, Cst address_size))
               in
-              Output.Expr (DCall (method_ptr, List.map tr_expr args))
+              Output.Expr (DCall (method_ptr, Var id :: List.map tr_expr args))
             in
             Seq [code_assignment; code_set_descriptor; code_call_constructor]
         | other ->
