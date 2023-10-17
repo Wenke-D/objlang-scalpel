@@ -19,7 +19,7 @@ let rec print_expr fmt = function
   | Alloc e ->
       fprintf fmt "alloc(@[%a@])" print_expr e
   | Addr adr ->
-      fprintf fmt "addressOf(@[%a@])" print_expr e
+      fprintf fmt "&%s" adr
   | DCall (adr, args) ->
       fprintf fmt "%a(@[%a@])" print_expr adr print_args args
 
