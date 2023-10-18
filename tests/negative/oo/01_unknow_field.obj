@@ -1,0 +1,23 @@
+class point {
+  attribute int x;
+  attribute int y;
+
+  method void constructor(int a, int b) {
+    this.x = a;
+    this.y = b;
+  }
+
+  method int sum(int z) {
+    return z + this.x + this.y;
+  }
+}
+
+function void main() {
+  var point p;
+  var int c;
+  p = new point(2, 1);
+  c = p.sum(48);
+  putchar(c);
+
+  c = p.ffff;
+}
