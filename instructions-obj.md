@@ -360,15 +360,16 @@ Note: this is a list of suggestions. It is not intended to be restrictive. The s
 
 ## Extension A. Inheritance
 
-The goal of this extension is to allow the use of [extends] in a class
-definition of an objlang program, for defining a child class that inherits
+The goal of this extension is to allow the use of `extends` in a class definition of an objlang program, for defining a child class that inherits
 attributes and methods from a parent class. The child class may also:
-  (i)   add new attributes
-  (ii)  add new methods
-  (iii) overwrite methods of the parent class
-If you consider implementing this extension, I suggest you proceed again 
-following an incremental approach: first complete (i), add (ii) only when
-(i) works, and (iii) only when (ii) also works.
+1. add new attributes
+2. add new methods
+3. overwrite methods of the parent class
+
+If you consider implementing this extension, I suggest you proceed again following an incremental approach
+1. add __new attributes__
+2. add __new method__
+3. and __overwrite method__
 
 ### 1. New attributes
 
@@ -376,36 +377,29 @@ Novelty with respect to the base version: one has to take into account the
 number of attributes of the parent class for deducing the total number of
 attributes of the child class and their offsets.
 
-   0       4                            ?
-  +-------+----------------------------+----------------------+
-  | descr | ...inherited attributes... | ...new attributes... |
-  +-------+----------------------------+----------------------+
+|address offset| data |
+|:------------:|:----:|
+| 0 | descriptor |
+| 4 | inherited attributes |
+| ? | new attributes |
 
-However, since there is no new method, you could imagine sharing the class
-descriptor with the parent class.
+However, since there is no new method, you could imagine sharing the class descriptor with the parent class.
 
 Note that in practice, you probably would like to add a dedicated constructor.
-However, in simple cases this particular method is only called statically and
-thus is never used through the descriptor: you can indeed at first avoid the
-creation of a new descriptor just for that.
 
+However, in simple cases this particular method is only called statically and thus is never used through the descriptor, you can indeed at first avoid the creation of a new descriptor just for that.
 
 ### 2. New methods
 
-As in the previous extension, one has to take into account the number of
-methods of the parent class to compute the right sizes and offsets.
-Do not forget to also build a new descriptor that contains the methods of
-both the parent and the child class.
+As in the previous extension, one has to take into account the number of methods of the parent class to compute the right sizes and offsets.
+
+Do not forget to also build a new descriptor that contains the methods of both the parent and the child class.
 
 ### 3. Overriding
 
-When a child class [C'] redefines a method [m] already defined by its mother
-class [C], the new definition [C'_m] should override the old definition [C_m]
-in the class descriptor of [C']. Thus:
-  - method [C'_m] should have the same offset as [C_m]
-  - the class descriptor for [C'] should contain a pointer to the right version
-    of [m].
-
+When a child class `C'` redefines a method `m` already defined by its base class `C`, the new definition `C'_m` should override the old definition `C_m` in the class descriptor of `C'`. Thus:
+- method `C'_m` should have the same offset as `C_m`
+- the class descriptor for `C'` should contain a pointer to the right version of `m`.
 
 ### 4. Bonus : super
   
@@ -418,23 +412,28 @@ accessing the parent version of some method.
 Restricting calls and object creations to toplevel expressions makes the
 translation cleaner, but restricts the allowed input programs. However, it is
 possible however to enable again the full syntax of expressions, while keeping
-the current state of [objlang2imp]. For this, you can add a preprocessing pass
-applied between [objlangtyper] and [objlang2imp], which takes as input an
+the current state of `objlang2imp`. For this, you can add a preprocessing pass
+applied between `objlangtyper` and `objlang2imp`, which takes as input an
 arbitrary objlang (typed) AST, and returns an equivalent program where calls
 and object creation are at toplevel.
 
-For this, it is enough to translate each call that is not already at toplevel
-by an assignment to some new variable, and then refer to the variable.
+For this, it is enough to translate each call that is not already at toplevel by an assignment to some new variable, and then refer to the variable.
 For instance,
+``` c++
   x = p.sum(24) + (new point(2, 1)).sum(12);
+```
 could be "flattened" as
+```c++
   a = p.sum(24);
   b = new point(2, 1);
   c = b.sum(12);
   x = a+c;
+```
 
 This translation decomposes complex expressions, at the cost of introducing a
-series of short-lived additional variables. However, with a proper register
+series of short-lived additional variables.
+
+However, with a proper register
 allocation this additional cost will reduce to zero.
 
 
@@ -444,29 +443,30 @@ Here are a few suggestions of extensions related to typing. The first ones
 can be implemented on the base version, some others make sense only when
 inheritance is already present.
 
-- produce a helpful message when the typer uncovers a typing error
-  (for instance: in case of an attempt to access an attribute that does
-  not exist in the considered class, produce a message that names the class
-  and the missing attribute)
+### Helpful message
+Produce a helpful message when the typer uncovers a typing error.
 
-- add an expression [obj instanceof C], that tests whether the object [obj]
-  is from a class [C'] that is a subclass of [C] (or [C] itself)
+For instance: in case of an attempt to access an attribute that does not exist in the considered class, produce a message that names the __class__ and the missing __attribute__
 
-- allow casting an object [obj] of static type [C] to another static type [C']
-  (reminder: casting toward a parent class is always possible, casting toward
-  a child class requires a runtime check, and casting toward an unrelated class
-  is not allowed)
+### Instanceof
+Add an expression `obj instanceof C`, that tests whether the object `obj` is from a class `C'` that is a subclass of `C` (or `C` itself)
 
-- allow static overloading of methods
-  (for each method, build a new name based on the method name and the types
-  of its argument; for each call, use the types computed for the arguments
-  to select the right method)
-  (warning: static overloading + inheritance and implicit up-cast produce a
-  few corner cases where a call might become ambiguous; you may ignore this
-  at first)
+### Type casting
+Allow casting an object `obj` of static type `C` to another static type `C'`.
 
-- allow the definition of abstract classes, which abstract methods
-  (reminder: one cannot create an instance of such a class with [new];
-  child classes should eventually provide definitions for all abstract methods;
-  the offset of each method is fixed by the abstract class that first introduces
-  it: the offset is the same in any child class that defines the method)
+__Reminder__: casting toward a parent class is always possible, casting toward a child class requires a runtime check, and casting toward an unrelated class is not allowed
+
+### Static overloading
+Allow static overloading of methods. For each method, build a new name based on the method name and the types of its argument.
+
+For each call, use the types computed for the arguments to select the right method.
+
+__Warning__: static overloading + inheritance and implicit up-cast produce a few corner cases where a call might become ambiguous; you may ignore this at first.
+
+### Abstract class
+
+Allow the definition of abstract classes, which has abstract methods.
+1. one cannot create an instance of such a class with `new`. 
+2. Child classes should eventually provide definitions for all abstract methods
+3. the offset of each method is fixed by the abstract class that first introduces it.
+4. the offset is the same in any child class that defines the method
