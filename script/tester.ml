@@ -1,3 +1,4 @@
+(** Find all obj file recursively within the give path *)
 let rec find_obj_files path =
   let is_directory name = Sys.is_directory (Filename.concat path name) in
   let is_obj_file name = Filename.check_suffix name ".obj" in
@@ -22,8 +23,6 @@ let rec find_obj_files path =
 
 let exec_name = "objlangc.exe"
 
-let test_dir_name = "tests"
-
 (** Execute a program in silent. All the output, stdout&stderr, of the program
     will be redirect to dev/null *)
 let shell_mute program arg =
@@ -32,33 +31,57 @@ let shell_mute program arg =
   (program, arg, return)
 
 
+(** Compose a shell command *)
 let format_command program arg = Format.sprintf "%s %s" program arg
 
+let hosting_dir = Filename.dirname Sys.argv.(0)
+
+let project_root = hosting_dir ^ "/../"
+
+let exec = Filename.concat project_root exec_name
+
+let ready = Sys.file_exists exec
+
+let not_empty_cases path =
+  let input_dir = Filename.concat project_root path in
+  let all_test_case = find_obj_files input_dir in
+  if List.length all_test_case = 0 then (
+    Printf.printf "there are not test cases at %s\n" input_dir ;
+    exit 0 )
+  else all_test_case
+
+
+let positive_test_path = "tests/positive"
+
+let run_test directory failure_filter name =
+  let all_test_case = not_empty_cases directory in
+  let results = List.map (shell_mute exec) all_test_case in
+  let failed_cases = List.filter failure_filter results in
+  if List.length failed_cases = 0 then
+    Printf.printf "[%s] are all passed!\n" name
+  else (
+    Printf.printf "the following [%s] failed: \n" name ;
+    List.iter
+      (fun (prog, arg, _) -> print_endline (format_command prog arg))
+      failed_cases ;
+    print_endline "\nPlease run each command for output." )
+
+
+let positive_test () =
+  let input_dir = Filename.concat project_root positive_test_path in
+  run_test input_dir (fun (_, _, return) -> return <> 0) "positive test"
+
+
+let negative_test_path = "tests/negative"
+
+let negative_test () =
+  let input_dir = Filename.concat project_root negative_test_path in
+  run_test input_dir (fun (_, _, return) -> return = 0) "negative test"
+
+
 let () =
-  let run_name = Sys.argv.(0) in
-  let cur_dir = Filename.dirname run_name in
-  let project_root = cur_dir ^ "/../" in
-  let exec = Filename.concat project_root exec_name in
-  let ready = Sys.file_exists exec in
   if not ready then (
     Printf.eprintf "%s does not exist" exec_name ;
     exit 0 )
-  else
-    let test_dir = Filename.concat project_root test_dir_name in
-    let all_test_case = find_obj_files test_dir in
-    if List.length all_test_case = 0 then (
-      print_endline "there are not test cases" ;
-      exit 0 )
-    else
-      let results = List.map (shell_mute exec) all_test_case in
-      let failed_cases =
-        List.filter (fun (_, _, return) -> return <> 0) results
-      in
-      if List.length failed_cases = 0 then
-        print_endline "All the tests are passed!"
-      else (
-        print_endline "the following test failed: " ;
-        List.iter
-          (fun (prog, arg, _) -> print_endline (format_command prog arg))
-          failed_cases ;
-        print_endline "\nPlease run each command for output." )
+  else positive_test () ;
+  negative_test ()
