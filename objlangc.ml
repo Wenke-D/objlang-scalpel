@@ -14,10 +14,8 @@ let () =
       try Objlangparser.program Objlanglexer.token lb
       with Objlangparser.Error ->
         let pos = lb.lex_curr_p in
-        let (p : CompilationException.position) =
-          {line= pos.pos_lnum; column= pos.pos_cnum - pos.pos_bol}
-        in
-        raise (CompilationException.SyntaxError p)
+        let (p : Error_syntax.position) = Error_syntax.make_position pos in
+        raise (Error_syntax.SyntaxError p)
     in
     close_in c ;
     (* typing *)
@@ -46,10 +44,8 @@ let () =
     close_out out ;
     exit 0
   with
-  | CompilationException.SyntaxError p ->
-      exit_with_error (CompilationException.format_syntax_error p)
-  | CompilationException.CompilationFailure m ->
-      exit_with_error (CompilationException.format_compilation_failure m)
+  | Error_syntax.SyntaxError p ->
+      exit_with_error (Error_syntax.format_syntax_error p)
   | TypeError.UndefinedError data ->
       exit_with_error (TypeError.format_undefined_error data)
   | TypeError.UnexpectedTypeError data ->
