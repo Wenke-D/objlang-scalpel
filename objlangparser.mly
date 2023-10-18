@@ -2,6 +2,7 @@
 
   open Lexing
   open Objlang
+  open Error_syntax
 
   let classes = ref []
   let globals = ref []
@@ -39,12 +40,9 @@ program:
        functions = List.rev !functions;
        globals = List.rev !globals} }
 | error { let pos = $startpos in
-          let message =
-            Printf.sprintf
-              "Syntax error at %d, %d"
-              pos.pos_lnum (pos.pos_cnum - pos.pos_bol)
+          let p = make_position pos
           in
-          failwith message }
+          raise (SyntaxError p) }
 ;
 
 decl:
