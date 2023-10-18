@@ -1,5 +1,5 @@
 open Objlang
-open TypeError
+open Error_type
 
 (** types for various environments *)
 module Env = Map.Make (String)

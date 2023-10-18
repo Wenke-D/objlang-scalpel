@@ -1,5 +1,5 @@
 open Debug
-open LogicError
+open Error_logic
 open List_ext
 
 let address_size = 4
