@@ -403,8 +403,7 @@ When a child class `C'` redefines a method `m` already defined by its base class
 
 ### 4. Bonus : super
   
-When methods can be overriden, the keyword [super] can become useful for 
-accessing the parent version of some method.
+When methods can be overriden, the keyword `super` can become useful for accessing the parent version of some method.
 
 
 ## Extension B. Preprocessing calls
