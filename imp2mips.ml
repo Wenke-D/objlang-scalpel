@@ -68,7 +68,7 @@ let tr_function fdef =
         @@ syscall (* sbrk -> shifts the limit of the heap *)
         @@ move t0 v0 (* v0 contains the first address of the allocated space *)
     | Addr label ->
-        la t0 label @@ lw t0 0 t0
+        la t0 label
     | DCall (adr, args) ->
         let args_code =
           List.fold_right (fun e code -> code @@ tr_expr e @@ push t0) args nop
