@@ -145,7 +145,7 @@ let translate_program (p : Input.typed_program) : Output.program =
         (* in case of creating an object *)
         | Input.New (classname, args) ->
             let descriptor_name = make_descriptor_name classname in
-            let descriptor_ptr = Output.Addr descriptor_name in
+            let descriptor_ptr = Output.Var descriptor_name in
             let code_set_descriptor =
               Output.Write (Var id, Var descriptor_name)
             in
