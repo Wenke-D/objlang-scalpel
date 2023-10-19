@@ -80,7 +80,7 @@ let tr_function fdef =
            3. jump to the location;
            4. clear stack for argument after return;
         *)
-        args_code @@ fun_adr_code @@ jal t0 @@ addi sp sp (4 * List.length args)
+        args_code @@ fun_adr_code @@ jalr t0 @@ addi sp sp (4 * List.length args)
   in
   (*
      Auxiliary function for producing unique labels, for use in the
