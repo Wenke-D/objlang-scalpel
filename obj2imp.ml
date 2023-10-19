@@ -106,16 +106,7 @@ let translate_program (p : Input.typed_program) : Output.program =
     | This ->
         Var Objlang.this_variable_name
     | MCall (obj, method_name, args) ->
-        let obj_t = obj.annot in
-        let class_name = require_class obj_t in
-        let class_def = find_class class_name in
-        let offset = offset_of_method method_name class_def in
-        let class_descriptor_adr = Output.Deref (tr_expr obj) in
-        let method_ptr_expr =
-          Output.Binop (Add, class_descriptor_adr, Cst offset)
-        in
-        let the_method = Output.Deref method_ptr_expr in
-        DCall (the_method, List.map tr_expr args)
+        make_dcall obj method_name args
   and tr_mem (mem_access : Input.typ Input.mem) : Input.typed_expression =
     match mem_access with
     | Arr (id, index) ->
@@ -133,6 +124,13 @@ let translate_program (p : Input.typed_program) : Output.program =
         let class_def = find_class classname in
         let offset = offset_of_field class_def field in
         {expr= Binop (Add, id, offset); annot= TInt}
+  and make_dcall (obj : Input.typed_expression) method_name args =
+    let classname = require_class obj.annot in
+    let descriptor_ptr = Output.Deref (tr_expr obj) in
+    let class_def = find_class classname in
+    let offset = offset_of_method method_name class_def in
+    let method_ptr = Output.Deref (Binop (Add, descriptor_ptr, Cst offset)) in
+    DCall (method_ptr, tr_expr obj :: List.map tr_expr args)
   in
   (* translation of instructions *)
   let rec tr_seq s = List.map tr_instr s
@@ -145,15 +143,14 @@ let translate_program (p : Input.typed_program) : Output.program =
         (* in case of creating an object *)
         | Input.New (classname, args) ->
             let descriptor_name = make_descriptor_name classname in
-            let descriptor_ptr = Output.Var descriptor_name in
             let code_set_descriptor =
               Output.Write (Var id, Var descriptor_name)
             in
             let code_call_constructor =
-              let method_ptr =
-                Output.Deref (Binop (Add, descriptor_ptr, Cst address_size))
-              in
-              Output.Expr (DCall (method_ptr, Var id :: List.map tr_expr args))
+              Output.Expr
+                (make_dcall
+                   (Input.mk_expr (Input.TClass classname) (Input.Var id))
+                   "constructor" args )
             in
             Seq [code_assignment; code_set_descriptor; code_call_constructor]
         | other ->
