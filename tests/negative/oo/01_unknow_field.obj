@@ -20,4 +20,5 @@ function void main() {
   putchar(c);
 
   c = p.ffff;
+  // field ffff is unknown
 }
