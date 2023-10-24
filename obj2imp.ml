@@ -35,6 +35,14 @@ let offset_of_method method_name (class_def : Input.typed_class) =
   (index * address_size) + address_size
 
 
+(** Calculate the size of class descriptor for a class *)
+let sizeof_layout (class_def : Input.typed_class) =
+  (* pointers to all methods, including constructors *)
+  List_ext.accumulate class_def.methods (fun e -> address_size)
+  (* pointer the base *)
+  + address_size
+
+
 let tr_op : Input.binop -> Imp.binop = function
   | Add ->
       Add
@@ -50,7 +58,7 @@ let translate_program (p : Input.typed_program) : Output.program =
     List.find (fun (def : Input.typed_class) -> def.name = name) p.classes
   in
   (* Size of a type in bytes. *)
-  let rec sizeof (t : Input.typ) =
+  let rec sizeof_obj (t : Input.typ) =
     match t with
     | TInt ->
         4
@@ -61,14 +69,14 @@ let translate_program (p : Input.typed_program) : Output.program =
         (List.length classdef.fields * address_size) + address_size
         (* varilable of class type is only an address *)
     | TArray t ->
-        sizeof
+        sizeof_obj
           t (* !!! size of a array is only the size of its element type !!! *)
     | TVoid ->
         4
   in
   let offset_of_array t (i : Input.typed_expression) : Input.typed_expression =
     let (offset : Input.typed_expression) =
-      {expr= Input.Cst (sizeof t); annot= TInt}
+      {expr= Input.Cst (sizeof_obj t); annot= TInt}
     in
     {expr= Input.Binop (Input.Mul, i, offset); annot= TInt}
   in
@@ -76,7 +84,7 @@ let translate_program (p : Input.typed_program) : Output.program =
       Input.typed_expression =
     let offset =
       partial_accum_excl class_def.fields
-        (fun (name, t) -> sizeof t)
+        (fun (name, t) -> sizeof_obj t)
         (fun (name, t) -> name = field)
       + address_size
     in
@@ -97,10 +105,9 @@ let translate_program (p : Input.typed_program) : Output.program =
     | Call (name, argv) ->
         Call (name, List.map tr_expr argv)
     | New (class_name, args) ->
-        Alloc (Cst (sizeof expr_type))
-    (* todo "init by constractor" *)
+        Alloc (Cst (sizeof_obj expr_type))
     | NewTab (t, size) ->
-        Alloc (Binop (Mul, Cst (sizeof expr_type), tr_expr size))
+        Alloc (Binop (Mul, Cst (sizeof_obj expr_type), tr_expr size))
     | Read mem ->
         Deref (tr_expr (tr_mem mem))
     | This ->
@@ -176,10 +183,7 @@ let translate_program (p : Input.typed_program) : Output.program =
   (* class_def -> (Imp f for init descriptor, Obj f method to funtion ) *)
   let tr_class (class_def : Input.typed_class) =
     let classname = class_def.name in
-    let size =
-      List_ext.accumulate class_def.methods (fun e -> address_size)
-      + address_size
-    in
+    let size = sizeof_layout class_def in
     let descriptor_name = make_descriptor_name classname in
     let descriptor_var = Output.Var descriptor_name in
     let alloc_code = Output.Set (descriptor_name, Alloc (Cst size)) in
