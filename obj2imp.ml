@@ -2,6 +2,7 @@ open Debug
 open Error_logic
 open List_ext
 
+(** A pointer needs 4 bytes *)
 let address_size = 4
 
 module Input = struct
@@ -22,6 +23,7 @@ let make_descriptor_name classname =
   Printf.sprintf "%s_descriptor_ptr" classname
 
 
+(** Assert a type is of type class and return the classname *)
 let require_class t =
   match t with
   | Input.TClass name ->
@@ -30,12 +32,13 @@ let require_class t =
       raise (ImplementationError (Input.string_of_typ t))
 
 
+(** Calculate the offset(byte) of a method *)
 let offset_of_method method_name (class_def : Input.typed_class) =
   let index = find_index class_def.methods (fun f -> f.name = method_name) in
   (index * address_size) + address_size
 
 
-(** Calculate the size of class descriptor for a class *)
+(** Calculate the size(byte) of class descriptor for a class *)
 let sizeof_layout (class_def : Input.typed_class) =
   (* pointers to all methods, including constructors *)
   List_ext.accumulate class_def.methods (fun e -> address_size)
@@ -57,7 +60,7 @@ let translate_program (p : Input.typed_program) : Output.program =
   let find_class name =
     List.find (fun (def : Input.typed_class) -> def.name = name) p.classes
   in
-  (* Size of a type in bytes. *)
+  (* Size of an instance of a type in bytes. *)
   let rec sizeof_obj (t : Input.typ) =
     match t with
     | TInt ->
